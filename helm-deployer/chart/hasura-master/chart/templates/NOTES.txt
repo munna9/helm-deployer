@@ -1,0 +1,4 @@
+1. hasura URL:
+{{- if .Values.ingress.enabled }}
+  Code Server: {{ .Values.service.url }}
+{{- end }}

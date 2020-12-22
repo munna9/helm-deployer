@@ -1,0 +1,1 @@
+{"tenant_uid": "shell", "timestamp_utc": "2020-01-30T19:34:44Z", "stream_type": "GEN_POWER_ACTUAL", "payload": [{"timestamp_utc": "2020-01-30T19:34:44Z", "identifier": "Simulated_Solar", "value": 46.78776168823242}], "source": "RTCC_SCADA", "message_id": "9152eb78-4397-11ea-b869-0643224e32ea"}

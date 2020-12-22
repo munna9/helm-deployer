@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+
+<!-- Put site-specific property overrides in this file. -->
+
+<configuration>
+<property>
+  <name>fs.s3.impl</name>
+  <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
+</property>
+
+<property>
+  <name>fs.s3a.aws.credentials.provider</name>
+  <value>org.apache.hadoop.fs.s3a.AssumedRoleCredentialProvider</value>
+  <value>org.apache.hadoop.fs.s3a.auth.AssumedRoleCredentialProvider</value>
+</property>
+
+<property>
+  <name>fs.s3a.multiobjectdelete.enable</name>
+  <value>false</value>
+</property>
+
+<property>
+  <name>fs.s3a.assumed.role.session.duration</name>
+  <value>30m</value>
+  <description>
+    Duration of assumed roles before a refresh is attempted.
+    Only used if AssumedRoleCredentialProvider is the AWS credential provider.
+    Range: 15m to 1h
+  </description>
+</property>
+
+<property>
+  <name>fs.s3a.assumed.role.sts.endpoint</name>
+  <value>sts.us-east-1.amazonaws.com</value>
+</property>
+
+<property>
+  <name>fs.s3a.assumed.role.sts.endpoint.region</name>
+  <value>us-east-1</value>
+</property>
+
+<property>
+  <name>fs.s3a.assumed.role.credentials.provider</name>
+  <value>org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider</value>
+</property>
+</configuration>

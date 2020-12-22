@@ -1,0 +1,5 @@
+dependencies:
+- name: sparkoperator
+  version: v1beta2
+  repository: http://storage.googleapis.com/kubernetes-charts-incubator
+#   condition: postgresql.enabled

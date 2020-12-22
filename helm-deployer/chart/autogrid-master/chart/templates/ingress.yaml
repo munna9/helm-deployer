@@ -1,0 +1,14 @@
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: autogridingress
+spec:
+  rules:
+  - host: autogrid.dev.ep.shell.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: autogrid-spark-ui
+          servicePort: 4040
