@@ -1,0 +1,48 @@
+image: "alpine/helm:3.2.4"
+
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+  K8S_SECRET_AWS_CREDENTIALS: $AWS_CREDENTIALS
+  K8S_SECRET_DOCKER_CONFIG: $DOCKER_CONFIG
+
+stages:
+  - test
+  - prepare
+  - approve
+  - trigger
+
+Test:
+  stage: test
+  script: scripts/test.sh
+    
+Create Downstream Jobs:
+  stage: prepare
+  script: 
+  - "scripts/generate_deployment_jobs.sh > helm_deploy.yaml"
+  - "cat helm_deploy.yaml"
+  artifacts:
+    paths:
+      - helm_deploy.yaml
+
+Approve Deployment Yaml:
+  stage: approve
+  only:
+    refs:
+      - master
+  when: manual
+  script: echo "Deployment approved by ${GITLAB_USER_NAME}"
+  allow_failure: false
+
+Trigger Downstream Jobs:
+  stage: trigger
+  only:
+    refs:
+      - master
+  needs: ["Approve Deployment Yaml"]
+  variables:
+    SECRET: ${SECRET}
+  trigger:
+    include:
+      - artifact: helm_deploy.yaml
+        job: Create Downstream Jobs
+    strategy: depend
