@@ -1,0 +1,22 @@
+variables:
+  TEST_DISABLED: "true"
+
+deployment:
+  environment:
+    url: https://prometheus.dev.ep.shell.com
+
+eng-stage:
+  stage: trigger
+  trigger:
+    project: stage/ep/prometheus
+    strategy: depend
+
+mp2-stage:
+  stage: trigger
+  trigger:
+    project: stage/mp2/pg/prometheus
+    strategy: depend
+
+include:
+  project: dev/ep/release-management
+  file: /Jobs/EP-AutoDevops-Template.yml
