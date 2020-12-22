@@ -1,0 +1,21 @@
+[submodule "charts/hasura"]
+	path = charts/hasura
+	url = ../../../../dev/ep/de/hasura
+[submodule "charts/superset"]
+	path = charts/superset
+	url = ../../../../dev/ep/de/superset
+[submodule "charts/airflow"]
+	path = charts/airflow
+	url = ../../../../dev/ep/dev-airflow
+[submodule "charts/pgadmin"]
+	path = charts/pgadmin
+	url = ../../../../dev/ep/pgadmin
+[submodule "charts/apollo"]
+	path = charts/apollo
+	url = ../../../../dev/ep/apollo
+[submodule "charts/sparkoperator"]
+	path = charts/sparkoperator
+	url = ../../../../dev/ep/de/sparkoperator
+[submodule "charts/autogrid"]
+	path = charts/autogrid
+	url = ../../../../dev/ep/de/autogrid
