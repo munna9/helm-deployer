@@ -1,0 +1,4 @@
+1. apollo URL:
+{{- if .Values.ingress.enabled }}
+  Code Server: https://{{ .Values.service.host }}.{{ .Values.ingress.domain }}
+{{- end }}

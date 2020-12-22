@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    app.gitlab.com/env: {{ .Values.gitlab.env }}
+    app.gitlab.com/app: {{ .Values.gitlab.app }}
+  name: {{ .Release.Name }}
+  labels:
+{{ include "apollo.labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "apollo.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      annotations:
+        rollme: {{ randAlphaNum 5 | quote }}
+        app.gitlab.com/env: {{ .Values.gitlab.env }}
+        app.gitlab.com/app: {{ .Values.gitlab.app }}
+      labels:
+        app.kubernetes.io/name: {{ include "apollo.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      serviceAccountName: {{ template "apollo.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ include "apollo.fullname" . }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          volumeMounts:
+          - mountPath: /root/.aws/credentials
+            name: awscredentials-secret
+            subPath: credentials
+          - mountPath: /app/.env
+            # mounts into file .env
+            # delete deployment when changing mountPaths to avoid errors.
+            name: env-secret
+            subPath: .env 
+          env:
+          - name: PORT
+            value: {{ .Values.service.portapollo | quote }}
+          {{- if .Values.k8sSecret }}
+          envFrom:
+          - secretRef:
+              name: {{ .Values.k8sSecret }}
+          {{- end }}
+
+          ports:
+            - name: apollo
+              containerPort: {{ .Values.service.portapollo }}
+              protgsocol: TCP
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}  
+      volumes:
+      - secret:
+          secretName: env-secret
+        name: env-secret
+      - secret:
+          secretName: awscredentials-secret
+        name: awscredentials-secret  
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

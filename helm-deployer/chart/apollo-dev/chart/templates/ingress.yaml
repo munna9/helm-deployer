@@ -1,0 +1,27 @@
+{{- if .Values.ingress.enabled -}}
+{{- $fullName := .Release.Name -}}
+{{- $svcPortApollo := 80 -}}
+{{- if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
+apiVersion: networking.k8s.io/v1beta1
+{{- else -}}
+apiVersion: extensions/v1beta1
+{{- end }}
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+{{ include "apollo.labels" . | indent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  rules:
+  - host: {{ .Values.service.host }}.{{ .Values.ingress.domain }}
+    http:
+      paths:
+        - path: /
+          backend:
+            serviceName: {{ .Release.Name }}
+            servicePort: {{ $svcPortApollo }}
+{{- end }}

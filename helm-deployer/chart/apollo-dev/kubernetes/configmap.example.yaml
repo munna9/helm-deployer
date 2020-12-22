@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: apolloserver
+data:
+  .env: |    
+    NODE_ENV=production
+    DB_PASSWORD='***************************************'
+    DB_USERNAME='***************************************'
+    POSTGRES_PRODUCTION_URL='***************************************'
+    SCHEMA_POSTGRES='***************************************'
+    ACCESS_TOKEN='***************************************'
+    AWS_ACCESS_KEY_ID='***************************************'
+    AWS_SECRET_ACCESS_KEY='***************************************'
+    BUCKET='***************************************'
+    S3DB='***************************************'
+    HASURA_SERVER_KEY='***************************************'
+    GRAPHQL_URL='https://hasura.default.svc.cluster.local:8080/v1/graphql'
+    BUGSNAG_KEY=''
+    ENGINE_API_KEY=''
+    LOGIC_URL='http://localhost:5000/loop'

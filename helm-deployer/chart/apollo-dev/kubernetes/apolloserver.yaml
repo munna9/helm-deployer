@@ -1,0 +1,94 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: apolloserver
+  name: apolloserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: apolloserver
+  template:
+    metadata:
+      labels:
+        app: apolloserver
+    spec:
+      containers:
+        - image: 258010404141.dkr.ecr.us-west-2.amazonaws.com/apolloserver/pipeline:latest
+          imagePullPolicy: IfNotPresent
+          name: apolloserver
+          resources:
+            requests:
+              memory: "1024Mi"
+              cpu: "1000m"
+            limits:
+              memory: "8192Mi"
+              cpu: "3000m"
+          volumeMounts:
+            - name: apolloserver
+              mountPath: /app/.env
+              subPath: .env
+      volumes:
+        - name: apolloserver
+          configMap:
+            name: apolloserver
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: apolloserver
+  name: apolloserver
+spec:
+  ports:
+    - protocol: TCP
+      port: 4000
+      targetPort: 4000
+  selector:
+    app: apolloserver
+  type: NodePort
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: apolloserver
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:258010404141:certificate/66717b86-88af-4f87-8797-39a53ee470ef
+    alb.ingress.kubernetes.io/security-groups: sg-047b39a0cd05ff6f5
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    http://alb.ingress.kubernetes.io/healthcheck-path: "200-404"
+    alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
+spec:
+  rules:
+    - host: apollo.prod.ep.shell.com
+      http:
+        paths:
+          - backend:
+              serviceName: ssl-redirect
+              servicePort: use-annotation
+          - backend:
+              serviceName: apolloserver
+              servicePort: 4000
+---
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: apolloserver
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: apolloserver
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
