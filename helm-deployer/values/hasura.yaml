@@ -1,0 +1,76 @@
+image:
+  repository: hasura/graphql-engine
+  tag: v1.2.1
+  pullPolicy: IfNotPresent
+
+gitlab:
+  env: hasura
+  app: hasura
+
+replicaCount: 1
+imagePullSecrets: [ name: gitlab-registry ]
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "ep-hasura-svc"
+
+podSecurityContext: {}
+  # fsGroup: 601
+
+podReadinessCheckSeconds: 60
+
+cred:
+  dockerconfigjson: ""
+  HASURA_GRAPHQL_DATABASE_URL: ""
+  HASURA_GRAPHQL_ADMIN_SECRET: ""
+
+
+
+securityContext: {
+  privileged: false }
+
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  porthasura: 8080
+  host: hasura
+
+
+ingress:
+  enabled: true
+  domain: eng.stage.ep.shell.com
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+
+# Other values
+    
+nameOverride: ""
+fullnameOverride: ""
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

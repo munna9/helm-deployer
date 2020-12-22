@@ -1,0 +1,63 @@
+# Default values for spark-application.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+metadata: 
+  fullName: "autogrid-asset-measures"
+  namespace: "helm-deployer-321-autogrid"
+spec:
+  driver:
+    serviceAccount: helm-deployer-321-autogrid-service-account
+    cores: 4
+    coreLimit: "4000m"
+    memory: "500m"
+    version: "2.4.5"
+
+  executor:
+    cores: 4
+    instances: 2
+    memory: "500m"
+    version: "2.4.5"
+
+rbac:
+  create: True
+serviceAccount:
+  create: True
+  name: helm-deployer-321-autogrid-service-account
+
+sparkApp:
+  image: "registry.ep.shell.com/dev/ep/de/autogrid/stage:latest"
+  mainApplicationFile: "local:///streaming-app/asset_measures_stream.py"
+
+pv:
+  create: False
+  name: efs-dev-autogrid-pv
+  capacity: 1Gi
+  policy: Retain
+  server: fs-09f7018a.efs.us-east-1.amazonaws.com
+  path: "/efs-dev-autogrid-pv"
+  
+pvc:
+  create: True
+  name: efs-dev-autogrid-pvc
+  storageClass: "aws-efs"
+  capacity: 1Gi
+
+cred:
+  accesskey: "c29tZXZhbHVlCg=="
+  secretkey: "c29tZXZhbHVlCg=="
+  tsdbpwd: "c29tZXZhbHVlCg=="
+  keystorepwd: "c29tZXZhbHVlCg=="
+  awsPath: "s3a://ne-raw-data-stage/autogrid/ag_asset_ts/asset_measures"
+  awsRole: "arn:aws:iam::651668690081:role/ep_servicerole"
+  tsdbUser: "ep_readwrite_user"
+  tsdbUrl: "jdbc:postgresql://tsdb.stage.ep.shell.com:5432/postgres"
+  tsdbTable: "ag_asset_ts.asset_measures"
+  kafkaServer: "derms-prod01-kafka01.autogridsystems.net:9092"
+  kafkaTopic: "flex.telemetry.to.shell"
+  sparkBatchTime: "5 minutes"
+  sparkMaster: "k8s://https://EB86F893421ACF4F1B01599F9857330A.gr7.us-east-1.eks.amazonaws.com:443"
+  sparkCheckpoint: "/var/lib/sparkapp/checkpoint"
+  sparkPersist: "s3db"
+  sparkStartingOffsets: "latest"
+  messageSchema: "/streaming-app/autogrid_message.json"
