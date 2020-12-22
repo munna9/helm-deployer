@@ -1,0 +1,98 @@
+image: alpine:latest
+
+variables:
+
+  DOCKER_DRIVER: overlay2
+
+  ROLLOUT_RESOURCE_TYPE: deployment
+
+  DOCKER_TLS_CERTDIR: ""
+
+stages:
+  - deploy
+
+# Auto deploy script
+.auto-deploy-script: &auto-deploy-script
+  script:
+    - auto-deploy check_kube_domain
+    - auto-deploy download_chart
+    - auto-deploy ensure_namespace
+    - auto-deploy initialize_tiller
+    - auto-deploy create_secret
+    - auto-deploy deploy
+    - auto-deploy persist_environment_url
+
+# Auto remove script
+.auto-remove-script: &auto-remove-script
+  script:
+    - auto-deploy initialize_tiller
+    - auto-deploy destroy
+
+
+# Deployment script
+.helm-deploy-script: &helm-deploy-script
+  script:
+    #- export KUBE_NAMESPACE=$CI_PROJECT_NAME-$CI_PROJECT_ID-$CI_ENVIRONMENT_NAME
+    - export TILLER_NAMESPACE=$KUBE_NAMESPACE
+    - tiller -listen localhost:44134 &
+    - export HELM_HOST="localhost:44134"
+    - echo $KUBE_NAMESPACE
+    - echo ${DOCKER_CONFIG}
+    - helm init --client-only
+    - helm list --host localhost:44134 --namespace $KUBE_NAMESPACE
+    #- helm delete $KUBE_NAMESPACE
+    #- sleep 30
+    - helm dependency update --host localhost:44134 ./chart
+    - helm upgrade --set cred.dockerconfigjson="${DOCKER_CONFIG}",aws.credentials="${AWS_CREDENTIALS}",dags.git.url="${DAGS_URL}",airflow.fernetKey="${FERNET_KEY}",airflow.config.AIRFLOW__GITLAB__CLIENT_SECRET="${OATH_CLIENT_SECRET}",env.variables="${ENV_VARS}" $KUBE_NAMESPACE ./chart --install --force --debug --host localhost:44134 --namespace $KUBE_NAMESPACE --values ./chart/values.yaml --output table
+    #- helm install --set cred.dockerconfigjson=${DOCKER_CONFIG} --host localhost:44134 --namespace $KUBE_NAMESPACE --values ./chart/values.yaml --name ${KUBE_NAMESPACE} --output table ./chart; fi;
+    #- helm upgrade ${KUBE_NAMESPACE} ./chart --install --debug --host localhost:44134 --namespace $KUBE_NAMESPACE --values ./chart/values.yaml
+    - kill -9 $(ps -aef | grep "tiller -listen localhost" | head -n 1 | awk '{print $1}')
+    
+.helm-delete-script: &helm-delete-script
+  script:
+    # - export KUBE_NAMESPACE=$CI_ENVIRONMENT_NAME
+    - export TILLER_NAMESPACE=$KUBE_NAMESPACE
+    - nohup tiller -listen localhost:44134 -alsologtostderr >/dev/null 2>&1 &
+    - export HELM_HOST="localhost:44134"
+    - helm init --client-only
+    - if [ "$(kubectl get namespace | grep -w ^"${KUBE_NAMESPACE} " | wc -l)" == "1" ]; then kubectl delete namespace ${KUBE_NAMESPACE}; else echo "Namespace ${KUBE_NAMESPACE} does not exist."; fi;
+    # - kill -9 $(ps -aef | grep "tiller -listen localhost" | head -n 1 | awk '{print $1}')
+
+# Auto deploy job template
+.auto-deploy:
+  stage: deploy
+  image: "registry.gitlab.com/gitlab-org/cluster-integration/auto-deploy-image:v0.8.3"
+  <<: *auto-deploy-script
+  
+  
+# Auto remove job template
+.auto-remove:
+  stage: deploy
+  image: "registry.gitlab.com/gitlab-org/cluster-integration/auto-deploy-image:v0.8.3"
+#   variables:
+    # GIT_STRATEGY: none
+  <<: *auto-remove-script
+
+
+.deploy:
+  stage: deploy
+  image: iankoulski/helm:2.15.0
+  <<: *helm-deploy-script
+  
+deploy-airflow:
+  extends: .deploy
+  environment:
+    name: airflow
+    url: https://airflow.dev.ep.shell.com
+  when: always
+  only:
+    refs:
+      - tags
+      - master
+
+# remove-airflow:
+#   extends: .remove
+#   when: manual
+#   environment:
+#     name: airflow
+#     action: stop
