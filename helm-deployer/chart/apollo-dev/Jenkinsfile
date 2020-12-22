@@ -1,0 +1,75 @@
+#!groovy
+// AWS Params
+def awsRegion     = "us-east-1"
+def ecrNameSpace  = "apolloserver"
+def eksCluserName = "engineering-production"
+def ecrUrl
+
+// Pipeline
+pipeline {
+  agent any
+  environment {
+    MAVEN_OPTS='-Djava.awt.headless=true'
+  }
+  stages {
+    stage('Checkout') {
+      steps {
+        script {
+          awsAccountId = sh (script: 'aws sts  get-caller-identity --query Account --output text', returnStdout: true).trim()
+          ecrName      = ecrNameSpace + "/" + env.BRANCH_NAME.toLowerCase()
+          ecrUrl       = awsAccountId + ".dkr.ecr." + awsRegion + ".amazonaws.com/" + ecrName
+        }
+      }
+    }
+    stage("Quality Analysis") {
+      parallel {
+        stage("Python Lint") {
+          steps {
+            echo 'Run pylama linter'
+            //TODO
+          }
+        }
+        stage("Unit Tests") {
+          steps {
+            echo 'Run Unit tests...'
+            //TODO
+          }
+        }
+        stage("SonarQube Scan") {
+          steps {
+            echo 'SonarQube Scan'
+            //
+          }
+        }
+      }
+    }
+    stage('Docker') {
+      stages {
+        stage('Build') {
+          steps {
+            sh "docker build -t ${ecrUrl} ."
+            sh "docker tag ${ecrUrl} ${ecrUrl}:${env.BUILD_NUMBER}"
+          }
+        }
+        stage('Push') {
+          steps {
+            sh "aws ecr describe-repositories --repository-names ${ecrName} --region ${awsRegion} || aws ecr create-repository --repository-name ${ecrName} --region ${awsRegion} --image-scanning-configuration scanOnPush=true"
+            sh "\$(aws ecr get-login --region ${awsRegion} --no-include-email)"
+            sh "docker push ${ecrUrl}:${env.BUILD_NUMBER}"
+            sh "docker push ${ecrUrl}:latest"
+          }
+          post {
+            cleanup {
+              sh "docker rmi -f ${ecrUrl}:${env.BUILD_NUMBER}"
+            }
+          }
+        }
+      }
+    }
+    stage('Deploy') {
+      steps {
+        sh "kubectl set image deployment/apolloserver apolloserver=${ecrUrl}:${env.BUILD_NUMBER}"
+      }
+    }
+  }
+}

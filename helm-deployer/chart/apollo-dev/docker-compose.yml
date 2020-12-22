@@ -1,0 +1,18 @@
+version: '3'
+services:
+  apolloserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports: 
+      - "4000:4000"
+    container_name: apolloserver
+    restart: unless-stopped
+  # apolloserver2:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   ports: 
+  #     - "80:4000"
+  #   container_name: apolloserver2
+  #   restart: unless-stopped

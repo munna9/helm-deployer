@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: airflow-requirements
+data:
+  requirements.txt: |
+    kubernetes==10.0.1
+    requests-oauthlib==1.1.0
+    flask_oauthlib==0.9.5
+    oauthlib==2.1.0
