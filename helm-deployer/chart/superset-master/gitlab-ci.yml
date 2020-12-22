@@ -1,0 +1,47 @@
+# Auto deploy script
+.auto-deploy-script: &auto-deploy-script
+  script:
+    - auto-deploy check_kube_domain
+    - auto-deploy ensure_namespace
+    - auto-deploy initialize_tiller
+    - auto-deploy create_secret
+    - auto-deploy deploy
+
+# Auto remove script
+.auto-remove-script: &auto-remove-script
+  script:
+    - auto-deploy initialize_tiller
+    - auto-deploy destroy
+
+# Auto deploy job template
+.auto-deploy:
+  stage: deploy
+  image: "registry.gitlab.com/gitlab-org/cluster-integration/auto-deploy-image:v0.8.3"
+  <<: *auto-deploy-script
+  
+# Auto remove job template
+.auto-remove:
+  stage: deploy
+  image: "registry.gitlab.com/gitlab-org/cluster-integration/auto-deploy-image:v0.8.3"
+#   variables:
+    # GIT_STRATEGY: none
+  <<: *auto-remove-script
+
+# Environment deployment and removal jobs
+deploy-superset:
+  extends: .auto-deploy
+  environment:
+    name: superset
+    # url: https://apollo.dev.ep.shell.com
+    on_stop: remove-superset
+  when: always
+remove-superset:
+  extends: .auto-remove
+  when: manual
+  environment:
+    name: superset
+    action: stop
+
+variables:
+  ROLLOUT_RESOURCE_TYPE: deployment
+
