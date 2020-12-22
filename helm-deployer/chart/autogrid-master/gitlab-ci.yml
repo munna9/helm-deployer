@@ -1,0 +1,18 @@
+variables:
+  TEST_DISABLED: "true"
+  DAST_DISABLED: "true"
+  PERFORMANCE_DISABLED: "true"
+
+production:
+  environment:
+    url: https://autogrid.eng.dev.ep.shell.com
+
+trigger eng-prod:
+  stage: trigger
+  trigger:
+    project: prod/ep/de/autogrid
+    strategy: depend
+
+include:
+  project: dev/ep/release-management
+  file: /Jobs/EP-AutoDevops-Template.yml
