@@ -1,0 +1,18 @@
+variables:
+  TEST_DISABLED: "true"
+  OAUTH_URL: ""
+  DEV_REPLICAS: 2
+
+deployment:
+  environment:
+    url: https://hasura.dev.ep.shell.com
+
+eng-stage:
+  stage: trigger
+  trigger:
+    project: stage/ep/hasura
+    strategy: depend
+
+include:
+  project: dev/ep/release-management
+  file: /Jobs/EP-AutoDevops-Template.yml
