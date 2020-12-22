@@ -1,0 +1,106 @@
+variables:
+  POSTGRES_ENABLED: "false"
+
+stages:
+  - build
+  - test
+  - deploy  # dummy stage to follow the template guidelines
+  - review
+  - dast
+  - staging
+  - canary
+  - production
+  - deployment
+  - incremental rollout 10%
+  - incremental rollout 25%
+  - incremental rollout 50%
+  - incremental rollout 100%
+  - performance
+  - cleanup
+  - trigger
+
+.oauth_script: &oauth_script
+    # OAuth
+    - |
+      OAUTH_URL=${OAUTH_URL=oauth.${KUBE_INGRESS_BASE_DOMAIN}}  # Set default OAuth URL if not provided
+      echo "OAuth URL: $OAUTH_URL"
+
+      if [ -n "${OAUTH_URL}" ]; then
+        oauth_values_file=$(mktemp)
+        cat > $oauth_values_file << EOF
+        ingress:
+          annotations:
+            nginx.ingress.kubernetes.io/auth-signin: https://${OAUTH_URL}/oauth2/start?rd=https://\$host\$request_uri\$is_args\$args
+            nginx.ingress.kubernetes.io/auth-url: https://${OAUTH_URL}/oauth2/auth
+      EOF
+        export HELM_UPGRADE_EXTRA_ARGS="${HELM_UPGRADE_EXTRA_ARGS} --values ${oauth_values_file}"
+      fi
+
+dast_environment_deploy:
+  before_script: &before_script
+    - '[ -n "${HELM_UPGRADE_EXTRA_ARGS_FILE}" ] && export HELM_UPGRADE_EXTRA_ARGS="${HELM_UPGRADE_EXTRA_ARGS} --values ${HELM_UPGRADE_EXTRA_ARGS_FILE}"'
+  variables:
+    HELM_UPGRADE_EXTRA_ARGS: >-
+      --install
+      --force
+      --set persistence.enabled=false
+      --set ingress.hosts[0]=dast-${CI_PROJECT_ID}-${CI_ENVIRONMENT_SLUG}.${KUBE_INGRESS_BASE_DOMAIN}
+      --set cred.dockerconfigjson=${DOCKER_CONFIG}
+      --set fullnameOverride=${CI_ENVIRONMENT_SLUG}
+      --set ingress.annotations.kubernetes\.io/ingress\.class=nginx
+      --set annotations.app\.gitlab\.com/app=${CI_PROJECT_PATH_SLUG}
+      --set annotations.app\.gitlab\.com/env=${CI_ENVIRONMENT_SLUG}
+
+review:
+  before_script:
+    - *before_script
+    - *oauth_script
+  variables:
+    HELM_UPGRADE_EXTRA_ARGS: >-
+      --install
+      --force
+      --set persistence.enabled=false
+      --set ingress.hosts[0]=${CI_PROJECT_ID}-${CI_ENVIRONMENT_SLUG}.${KUBE_INGRESS_BASE_DOMAIN}
+      --set cred.dockerconfigjson=${DOCKER_CONFIG}
+      --set fullnameOverride=${CI_ENVIRONMENT_SLUG}
+      --set ingress.annotations.kubernetes\.io/ingress\.class=nginx
+      --set annotations.app\.gitlab\.com/app=${CI_PROJECT_PATH_SLUG}
+      --set annotations.app\.gitlab\.com/env=${CI_ENVIRONMENT_SLUG}
+
+production:
+  rules:
+    - when: "never"
+
+deployment:
+  rules:
+    - when: "on_success"
+  stage: deployment
+  extends: production
+  before_script:
+    - *before_script
+    - export HELM_UPGRADE_EXTRA_ARGS="${HELM_UPGRADE_EXTRA_ARGS} --set ingress.hosts[0]=${CI_ENVIRONMENT_URL#"https://"}"
+    - *oauth_script
+  after_script: # build yaml with image info
+    - |
+      cat << EOF > .image.env
+      CI_REGISTRY_IMAGE=${CI_REGISTRY_IMAGE}
+      CI_COMMIT_SHA=${CI_COMMIT_SHA}
+      EOF
+  variables:
+    HELM_UPGRADE_EXTRA_ARGS: >-
+      --install
+      --force
+      --set cred.dockerconfigjson=${DOCKER_CONFIG}
+      --set fullnameOverride=${CI_ENVIRONMENT_SLUG}
+      --set ingress.annotations.kubernetes\.io/ingress\.class=nginx
+      --set annotations.app\.gitlab\.com/app=${CI_PROJECT_PATH_SLUG}
+      --set annotations.app\.gitlab\.com/env=${CI_ENVIRONMENT_SLUG}
+  environment:
+    name: dev
+  artifacts:
+    paths:
+      - chart
+      - .image.env
+
+include:
+  - template: Auto-DevOps.gitlab-ci.yml
