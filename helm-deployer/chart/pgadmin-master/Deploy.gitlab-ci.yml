@@ -1,0 +1,55 @@
+.auto-deploy:
+  image: "registry.gitlab.com/gitlab-org/cluster-integration/auto-deploy-image:v0.8.3"
+
+
+.production: &production_template
+  extends: .auto-deploy
+  stage: production
+  script:
+    - auto-deploy check_kube_domain
+    - auto-deploy download_chart
+    - auto-deploy ensure_namespace
+    - auto-deploy initialize_tiller
+    - auto-deploy create_secret
+    - auto-deploy deploy
+    - auto-deploy delete canary
+    - auto-deploy delete rollout
+    - auto-deploy persist_environment_url
+  environment:
+    name: production
+    url: https://$CI_PROJECT_PATH_SLUG.$KUBE_INGRESS_BASE_DOMAIN
+
+  artifacts:
+    paths: [environment_url.txt]
+
+production:
+  <<: *production_template
+  only:
+    refs:
+      - master
+    kubernetes: active
+  except:
+    variables:
+      - $STAGING_ENABLED
+      - $CANARY_ENABLED
+      - $INCREMENTAL_ROLLOUT_ENABLED
+      - $INCREMENTAL_ROLLOUT_MODE
+
+production_manual:
+  <<: *production_template
+  when: manual
+  allow_failure: false
+  only:
+    refs:
+      - master
+    kubernetes: active
+    variables:
+      - $STAGING_ENABLED
+      - $CANARY_ENABLED
+    variables:
+      - $INCREMENTAL_ROLLOUT_ENABLED
+      - $INCREMENTAL_ROLLOUT_MODE
+      
+
+# This job implements incremental rollout on for every push to `master`.
+
