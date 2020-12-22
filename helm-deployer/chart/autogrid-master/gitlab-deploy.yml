@@ -1,0 +1,75 @@
+.helm-deploy-script: &helm-deploy-script
+  script:
+    #- export KUBE_NAMESPACE=$CI_PROJECT_NAME-$CI_PROJECT_ID-$CI_ENVIRONMENT_NAME
+    - export TILLER_NAMESPACE=$KUBE_NAMESPACE
+    - tiller -listen localhost:44134 &
+    - export HELM_HOST="localhost:44134"
+    - echo $KUBE_NAMESPACE
+    - echo ${DOCKER_CONFIG}
+    - helm init --client-only
+    - helm list --host localhost:44134 --namespace $KUBE_NAMESPACE
+    #- helm delete $KUBE_NAMESPACE
+    #- sleep 30
+    # - kubectl delete sparkapplication autogrid-asset-measures
+    # - sleep 10
+    - helm dependency update --host localhost:44134 ./chart
+    - helm upgrade --set cred.dockerconfigjson="${DOCKER_CONFIG}" --set cred.accesskey="${ACCESS_KEY}"  --set cred.secretkey="${SECRET_KEY}"  --set cred.tsdbpwd="${TSDB_PWD}" --set cred.keystorepwd="${KEYSTORE_PWD}" $KUBE_NAMESPACE ./chart --install --force --debug --host localhost:44134 --namespace $KUBE_NAMESPACE --values ./chart/values.yaml --output table
+    #- helm install --set cred.dockerconfigjson=${DOCKER_CONFIG} --host localhost:44134 --namespace $KUBE_NAMESPACE --values ./chart/values.yaml --name ${KUBE_NAMESPACE} --output table ./chart; fi;
+    #- helm upgrade ${KUBE_NAMESPACE} ./chart --install --debug --host localhost:44134 --namespace $KUBE_NAMESPACE --values ./chart/values.yaml
+    - kill -9 $(ps -aef | grep "tiller -listen localhost" | head -n 1 | awk '{print $1}')
+
+
+
+
+
+# Auto deploy script
+.auto-deploy-script: &auto-deploy-script
+  script:
+    - auto-deploy check_kube_domain
+    - auto-deploy download_chart
+    - auto-deploy ensure_namespace
+    - auto-deploy initialize_tiller
+    - auto-deploy create_secret
+    - auto-deploy deploy
+
+# Auto remove script
+.auto-remove-script: &auto-remove-script
+  script:
+    - auto-deploy initialize_tiller
+    - auto-deploy destroy
+
+# Auto deploy job template
+.auto-deploy:
+  stage: deploy
+  image: "registry.gitlab.com/gitlab-org/cluster-integration/auto-deploy-image:v0.8.3"
+  <<: *auto-deploy-script
+  
+# Auto remove job template
+.auto-remove:
+  stage: deploy
+  image: "registry.gitlab.com/gitlab-org/cluster-integration/auto-deploy-image:v0.8.3"
+#   variables:
+    # GIT_STRATEGY: none
+  <<: *auto-remove-script
+  
+  
+  
+.deploy:
+  stage: deploy
+  image: iankoulski/helm:2.15.0
+  <<: *helm-deploy-script
+  
+deploy-autogrid:
+  extends: .deploy
+  environment:
+    name: autogrid
+    url: https://autogrid.dev.ep.shell.com
+  when: always
+  
+remove-autogrid:
+  extends: .auto-remove
+  when: manual
+  environment:
+    name: autogrid
+    action: stop
+
